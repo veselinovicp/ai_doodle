@@ -27,7 +27,7 @@ Style | Result
 # Produce results on floydhub
 
 Modify the floyd_train.py file - set content image, style image and other parameters
-and the run one of tne following commands: 
+and the run one of the following commands: 
 
 * Run on CPU: floyd run --cpu --data monoton/datasets/ai_doodle/3:/data --env keras "python floyd_train.py"
 
@@ -37,4 +37,4 @@ and the run one of tne following commands:
 
 Producing new image based on style image and input is computationally expensive. For each of the 
 upper examples computation lasted for around three minutes on a floydhub GPU device. Maybe we can get 
-around this limitation with using web sockets and updating the result sequentially.
+around this limitation by using web sockets and updating the result sequentially.
