@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>AI doodle</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+
+	<link rel="stylesheet" href="{{ url_for('static',filename='normalize.css') }}">
+	<link rel="stylesheet" href="{{ url_for('static',filename='skeleton.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static',filename='doodle.css') }}">
+</head>
+
+<body>
+
+
+<div class="section categories">
+    <div class="container">
+      <h3 class="section-heading">AI style doodle</h3>
+      <p class="section-description">Choose image and style and see what AI doodling will make of it.</p>
+
+      <div class="row">
+
+        <div class="five columns category">
+          <img id="image" src="{{ url_for('static',filename='faca.jpg') }}" class="u-max-full-width"/>
+
+          <div class="row">
+            <a class="button" href="#">Choose image</a>
+            or
+            <a class="button" href="#">Pick random</a>
+          </div>
+        </div>
+
+          <div class="two columns">
+            <br><br><br>
+            <h1>+</h1>
+          </div>
+
+        <div class="five columns category">
+          <img id="style" src="{{ url_for('static',filename='van_gough.jpg') }}" class="u-max-full-width"/>
+          <div class="row">
+            <a class="button" href="#">Choose style</a>
+            or
+            <a class="button" href="#">Pick random</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    
+
+    <div class="row">
+      <div class="twelve columns category">
+         <img src="{{ url_for('static',filename='2.png') }}" class="u-max-full-width"/>
+      </div>
+    </div>
+    <div class="row">
+      <a class="button" href="#">Stylize!</a>
+    </div>
+
+
+  </div>
+
+</body>
+</html>
