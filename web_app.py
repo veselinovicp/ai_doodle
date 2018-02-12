@@ -1,10 +1,13 @@
 import os
+import random # for randomly picking images and styles
 from flask import Flask, render_template
 
 
 # initialize flask app
 app = Flask(__name__)
 
+IMAGELIST=["2.png", "faca.jpg", "van_gough.jpg"]
+STYLELIST=["2.png", "faca.jpg", "van_gough.jpg"]
 
 # main page
 @app.route('/')
@@ -16,6 +19,18 @@ def index():
 @app.route('/stylize/', methods=['POST'])
 def style():
 	return img
+
+
+# randomly pick an image
+@app.route('/randomimage/', methods=['GET'])
+def randomimage():
+	return "static/" + random.choice(IMAGELIST)
+
+
+# randomly pick style
+@app.route('/randomstyle/', methods=['GET'])
+def randomstyle():
+	return "static/" + random.choice(STYLELIST)
 
 
 if __name__ == "__main__":
