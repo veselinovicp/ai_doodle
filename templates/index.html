@@ -28,9 +28,9 @@
           </div>
 
           <div class="row">
-            <a id="imagebutton" class="button" href="#">Choose image</a>
+            <a id="imagebutton" class="button">Choose image</a>
             or
-            <a id="randomimage" class="button" href="#">Pick random</a>
+            <a id="randomimage" class="button">Pick random</a>
           </div>
         </div>
 
@@ -45,9 +45,9 @@
             </div>
 
           <div class="row">
-            <a id="stylebutton" class="button" href="#">Choose style</a>
+            <a id="stylebutton" class="button">Choose style</a>
             or
-            <a id="randomstyle" class="button" href="#">Pick random</a>
+            <a id="randomstyle" class="button">Pick random</a>
           </div>
         </div>
 
@@ -58,11 +58,11 @@
 
     <div class="row">
       <div class="twelve columns">
-         <img src="{{ url_for('static',filename='2.png') }}" class="u-max-full-width"/>
+         <img id="result" src="{{ url_for('static',filename='2.png') }}" class="u-max-full-width"/>
       </div>
     </div>
     <div class="row">
-      <a class="button" href="#">Stylize!</a>
+      <a id="stylize" class="button">Stylize!</a>
     </div>
 
 
@@ -92,6 +92,33 @@
         }
       });
     });
+
+    $("#stylize").click(function(){
+      var img = document.getElementById("image");
+      var img64 = imageToBase64(img);
+      var style = document.getElementById("style");
+      var style64 = imageToBase64(style);
+      $.ajax({
+        type: "POST",
+        data: JSON.stringify({'i': img64, 's':style64}),
+        url: $SCRIPT_ROOT + "/stylize/",
+        success: function(response){
+          $('#result').attr('src', response);
+        }
+      });
+    });
+
+    function imageToBase64(img) {
+        var canvas, ctx, dataURL, base64;
+        canvas = document.createElement("canvas");
+        ctx = canvas.getContext("2d");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        dataURL = canvas.toDataURL("image/png");
+        base64 = dataURL.replace(/^data:image\/png;base64,/, "");
+        return base64;
+    }
  
  </script>
 
