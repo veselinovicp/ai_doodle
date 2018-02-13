@@ -6,3 +6,18 @@
 .section-description {
   margin-bottom: 1.2rem;
 }
+
+.image {
+	max-width:300px;
+	max-height:300px;
+}
+
+.dr{
+	display:flex;
+	align-items:center;
+	height:300px;
+}
+
+.lw{
+	width:300px;
+}
