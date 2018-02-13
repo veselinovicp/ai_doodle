@@ -37,22 +37,26 @@
       </div>
       <div class="row">
         <div class="five columns lw">
-            <a id="imagebutton" class="button">Choose image</a>
-            or
-            <a id="randomimage" class="button">Pick random</a>
-          
+              <span class="nw">
+                <label for="imagebutton" class="button" >Select image</label>
+                <input id="imagebutton" class="loadimg" type="file" onchange="selectImage()">
+                or
+                <a id="randomimage" class="button">Pick random</a>
+              </span>
         </div>
 
-        <div class="two columns lw">&nbsp</div>
+        <div class="two columns lw">&nbsp;</div>
 
         <div class="five columns lw">
-            <a id="stylebutton" class="button">Choose style</a>
-            or
-            <a id="randomstyle" class="button">Pick random</a>
+            <span class="nw">
+              <label for="stylebutton" class="button">Select style</label>
+                <input id="stylebutton" class="loadimg" type="file" onchange="selectStyle()">
+                or
+              <a id="randomstyle" class="button">Pick random</a>
+            </span>
         </div>
     </div>
 
-    
 
     <div class="row dr">
       <div class="twelve columns">
@@ -63,11 +67,9 @@
       <a id="stylize" class="button">Stylize!</a>
     </div>
 
-
   </div>
 
   <script src='http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js'></script>
-
   <script type="text/javascript">
     var $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
 
@@ -116,6 +118,28 @@
         dataURL = canvas.toDataURL("image/png");
         base64 = dataURL.replace(/^data:image\/png;base64,/, "");
         return base64;
+    }
+
+    function selectImage(){
+      previewImage("image", "imagebutton");
+    }
+
+    function selectStyle(){
+      previewImage("style", "stylebutton");
+    }
+
+    function previewImage(imgid, inputid){
+      var img = document.getElementById(imgid);
+      var file = document.getElementById(inputid).files[0];
+      var reader  = new FileReader();
+
+      reader.addEventListener("load", function () {
+        img.src = reader.result;
+      }, false);
+
+      if (file) {
+        reader.readAsDataURL(file);
+      }
     }
  
  </script>

@@ -21,3 +21,11 @@
 .lw{
 	width:300px;
 }
+
+.loadimg{
+	display:none;
+}
+
+.nw{
+	white-space:nowrap;
+}
