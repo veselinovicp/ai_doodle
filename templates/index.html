@@ -39,7 +39,7 @@
         <div class="five columns lw">
               <span class="nw">
                 <label for="imagebutton" class="button" >Select image</label>
-                <input id="imagebutton" class="loadimg" type="file" onchange="selectImage()">
+                <input id="imagebutton" class="loadimg" type="file" onchange="selectImage()" accept=".png, .jpg, .jpeg">
                 or
                 <a id="randomimage" class="button">Pick random</a>
               </span>
@@ -50,7 +50,7 @@
         <div class="five columns lw">
             <span class="nw">
               <label for="stylebutton" class="button">Select style</label>
-                <input id="stylebutton" class="loadimg" type="file" onchange="selectStyle()">
+                <input id="stylebutton" class="loadimg" type="file" onchange="selectStyle()" accept=".png, .jpg, .jpeg">
                 or
               <a id="randomstyle" class="button">Pick random</a>
             </span>
@@ -94,30 +94,38 @@
     });
 
     $("#stylize").click(function(){
+
       var img = document.getElementById("image");
-      var img64 = imageToBase64(img);
+      var imgdata = imageToDataURL(img);
       var style = document.getElementById("style");
-      var style64 = imageToBase64(style);
+      var styledata = imageToDataURL(style);
+
+      var formData = new FormData();
+      formData.append('img', imgdata);
+      formData.append('style', styledata);
+
       $.ajax({
         type: "POST",
-        data: JSON.stringify({'i': img64, 's':style64}),
+        data: formData,
         url: $SCRIPT_ROOT + "/stylize/",
+        contentType: false,
+        processData: false,
         success: function(response){
           $('#result').attr('src', response);
+
         }
       });
     });
 
-    function imageToBase64(img) {
-        var canvas, ctx, dataURL, base64;
+    function imageToDataURL(img){
+      var canvas, ctx, dataURL;
         canvas = document.createElement("canvas");
         ctx = canvas.getContext("2d");
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
         ctx.drawImage(img, 0, 0);
         dataURL = canvas.toDataURL("image/png");
-        base64 = dataURL.replace(/^data:image\/png;base64,/, "");
-        return base64;
+        return dataURL;
     }
 
     function selectImage(){

@@ -1,6 +1,6 @@
 import os
 import random # for randomly picking images and styles
-import json # for decoding ajax
+import re
 from flask import Flask, render_template, request
 
 
@@ -19,11 +19,13 @@ def index():
 # user clicked stylize
 @app.route('/stylize/', methods=['POST'])
 def style():
-	data = request.get_data().decode("utf-8")
-	data = json.loads(data)
-	#print(data['i']) # image in base64
-	#print(data['s']) # style in base64
-	return "static/faca.jpg"
+	data = request.form.to_dict() 
+
+	# here we have image data in base64
+	#img = re.search(r'base64,(.*)',data['img']).group(1)
+	#style = re.search(r'base64,(.*)',data['style']).group(1)
+	
+	return data['img']
 
 
 # randomly pick an image
