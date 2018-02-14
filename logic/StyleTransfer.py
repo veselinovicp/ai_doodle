@@ -10,11 +10,16 @@ from keras.applications.vgg16 import VGG16
 from scipy.optimize import fmin_l_bfgs_b
 from scipy.misc import imsave
 import matplotlib.pyplot as plt
+from io import BytesIO
+import base64
 
 class StyleTransfer:
 
     def __init__(self, width=512, height=512, content_image_path = '../data/hugo.jpg', style_image_path = '../data/wave.jpg',
-                 iterations = 10, content_weight = 0.025, style_weight = 5.0, total_variation_weight = 1.0):
+                 content_image_base64 = None,
+                 style_image_base64 =None,
+                 iterations = 10, content_weight = 0.025, style_weight = 5.0, total_variation_weight = 1.0,
+                 output_path = None ):
         self.height = height
         self.width = width
         self.content_image_path = content_image_path
@@ -24,16 +29,26 @@ class StyleTransfer:
         self.content_weight = content_weight
         self.style_weight = style_weight
         self.total_variation_weight = total_variation_weight
+        self.content_image_base64 = content_image_base64
+        self.style_image_base64 = style_image_base64
+        self.output_path = output_path
 
-    def transfer(self, output_path):
+
+    def transfer(self):
 
 
         # content_image_path = '../data/hugo.jpg'
-        content_image = Image.open(self.content_image_path)
+        if self.content_image_base64 is None:
+            content_image = Image.open(self.content_image_path)
+        else:
+            content_image = Image.open(BytesIO(base64.b64decode(self.content_image_base64)))
         content_image = content_image.resize((self.height, self.width))
 
         # style_image_path = '../data/wave.jpg'
-        style_image = Image.open(self.style_image_path)
+        if self.style_image_base64 is None:
+            style_image = Image.open(self.style_image_path)
+        else:
+            style_image = Image.open(BytesIO(base64.b64decode(self.style_image_base64)))
         style_image = style_image.resize((self.height, self.width))
 
         content_array = np.asarray(content_image, dtype='float32')
@@ -44,19 +59,26 @@ class StyleTransfer:
         style_array = np.expand_dims(style_array, axis=0)
         print(style_array.shape)
 
+        dimensions = (1, self.height, self.width, 3)
+
         content_array[:, :, :, 0] -= 103.939
         content_array[:, :, :, 1] -= 116.779
         content_array[:, :, :, 2] -= 123.68
-        content_array = content_array[:, :, :, ::-1]
+        if content_array.shape[3] == 4:
+            content_array = content_array[:, :, :, :-1]#::-1
+        # content_array = content_array.reshape(dimensions)
 
         style_array[:, :, :, 0] -= 103.939
         style_array[:, :, :, 1] -= 116.779
         style_array[:, :, :, 2] -= 123.68
-        style_array = style_array[:, :, :, ::-1]
+        if style_array.shape[3] == 4:
+            style_array = style_array[:, :, :, :-1]#::-1
+        # style_array = style_array.reshape(dimensions)
 
         content_image = backend.variable(content_array)
         style_image = backend.variable(style_array)
-        combination_image = backend.placeholder((1, self.height, self.width, 3))
+
+        combination_image = backend.placeholder(dimensions)
 
         input_tensor = backend.concatenate([content_image,
                                             style_image,
@@ -116,7 +138,7 @@ class StyleTransfer:
         f_outputs = backend.function([combination_image], outputs)
 
         def eval_loss_and_grads(x):
-            x = x.reshape((1, self.height, self.width, 3))
+            x = x.reshape(dimensions)
             outs = f_outputs([x])
             loss_value = outs[0]
             grad_values = outs[1].flatten().astype('float64')
@@ -144,7 +166,7 @@ class StyleTransfer:
 
         evaluator = Evaluator()
 
-        x = np.random.uniform(0, 255, (1, self.height, self.width, 3)) - 128.
+        x = np.random.uniform(0, 255, dimensions) - 128.
 
         # iterations = 10
 
@@ -166,7 +188,12 @@ class StyleTransfer:
 
         result = Image.fromarray(x)
 
-        imsave(output_path, result)
+        if self.output_path is not None:
+            imsave(self.output_path, result)
+        else:
+            buffered = BytesIO()
+            result.save(buffered, format="JPEG")
+            return base64.b64encode(buffered.getvalue())
 
 
 
