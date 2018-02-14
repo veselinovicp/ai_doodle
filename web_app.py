@@ -26,7 +26,7 @@ def style():
     img = re.search(r'base64,(.*)', data['img']).group(1)
     style = re.search(r'base64,(.*)', data['style']).group(1)
 
-    style_transfer = lg.StyleTransfer(width=50, height=50, content_image_base64=img,
+    style_transfer = lg.StyleTransfer(width=200, height=200, content_image_base64=img,
                                       style_image_base64=style, iterations=5)
 
     result = style_transfer.transfer()
