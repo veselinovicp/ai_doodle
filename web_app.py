@@ -3,9 +3,18 @@ import random  # for randomly picking images and styles
 import re
 from flask import Flask, render_template, request
 import logic.StyleTransfer as lg
+from flask_socketio import SocketIO, emit
+import json
+
 
 # initialize flask app
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'secret!'
+
+
+# ping_timeout should be high enough
+socketio = SocketIO(app, ping_timeout=120)
+
 
 IMAGELIST = ["2.png", "faca.jpg", "van_gough.jpg"]
 STYLELIST = ["2.png", "faca.jpg", "van_gough.jpg"]
@@ -18,19 +27,17 @@ def index():
 
 
 # user clicked stylize
-@app.route('/stylize/', methods=['POST'])
-def style():
-    data = request.form.to_dict()
+@socketio.on('stylize')
+def stylizeEvent(json_string):
+	data = json.loads(json_string['content'])
 
-    # here we have image data in base64
-    img = re.search(r'base64,(.*)', data['img']).group(1)
-    style = re.search(r'base64,(.*)', data['style']).group(1)
+	img = re.search(r'base64,(.*)', data['img']).group(1)
+	style = re.search(r'base64,(.*)', data['style']).group(1)
 
-    style_transfer = lg.StyleTransfer(width=200, height=200, content_image_base64=img,
-                                      style_image_base64=style, iterations=5)
-
-    result = style_transfer.transfer()
-    return result  # return data['img']
+	style_transfer = lg.StyleTransfer(width=200, height=200, content_image_base64=img,
+                                      style_image_base64=style, iterations=1)
+	result = style_transfer.transfer().decode("utf-8")
+	emit('updateresult', result)
 
 
 # randomly pick an image
@@ -47,5 +54,5 @@ def randomstyle():
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
-# app.run(debug=True) # optional
+    socketio.run(app)
+	# app.run(debug=True) # optional
