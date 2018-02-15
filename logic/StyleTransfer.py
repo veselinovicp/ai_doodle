@@ -12,6 +12,8 @@ from scipy.misc import imsave
 import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
+from flask_socketio import emit
+
 
 class StyleTransfer:
 
@@ -19,7 +21,7 @@ class StyleTransfer:
                  content_image_base64 = None,
                  style_image_base64 =None,
                  iterations = 10, content_weight = 0.025, style_weight = 5.0, total_variation_weight = 1.0,
-                 output_path = None ):
+                 output_path = None, web_socket_channel=None, max_fun = 20 ):
         self.height = height
         self.width = width
         self.content_image_path = content_image_path
@@ -32,6 +34,8 @@ class StyleTransfer:
         self.content_image_base64 = content_image_base64
         self.style_image_base64 = style_image_base64
         self.output_path = output_path
+        self.web_socket_channel = web_socket_channel
+        self.max_fun = max_fun
 
 
     def transfer(self):
@@ -65,14 +69,14 @@ class StyleTransfer:
         content_array[:, :, :, 1] -= 116.779
         content_array[:, :, :, 2] -= 123.68
         if content_array.shape[3] == 4:
-            content_array = content_array[:, :, :, :-1]#::-1
+            content_array = content_array[:, :, :, 0:3]#::-1  :-1
         # content_array = content_array.reshape(dimensions)
 
         style_array[:, :, :, 0] -= 103.939
         style_array[:, :, :, 1] -= 116.779
         style_array[:, :, :, 2] -= 123.68
         if style_array.shape[3] == 4:
-            style_array = style_array[:, :, :, :-1]#::-1
+            style_array = style_array[:, :, :, 0:3]#::-1 :-1
         # style_array = style_array.reshape(dimensions)
 
         content_image = backend.variable(content_array)
@@ -168,32 +172,50 @@ class StyleTransfer:
 
         x = np.random.uniform(0, 255, dimensions) - 128.
 
-        # iterations = 10
+
 
         for i in range(self.iterations):
             print('Start of iteration', i)
             start_time = time.time()
             x, min_val, info = fmin_l_bfgs_b(evaluator.loss, x.flatten(),
-                                             fprime=evaluator.grads, maxfun=20)
+                                             fprime=evaluator.grads, maxfun=self.max_fun)
             print('Current loss value:', min_val)
             end_time = time.time()
             print('Iteration %d completed in %ds' % (i, end_time - start_time))
+            if self.web_socket_channel is not None:
+                self.__post_result_via_web_socket(x)
 
+        if self.web_socket_channel is None:
+            x = x.reshape((self.height, self.width, 3))
+            x = x[:, :, ::-1]
+            x[:, :, 0] += 103.939
+            x[:, :, 1] += 116.779
+            x[:, :, 2] += 123.68
+            x = np.clip(x, 0, 255).astype('uint8')
+
+            result = Image.fromarray(x)
+
+            if self.output_path is not None:
+                imsave(self.output_path, result)
+            else:
+                buffered = BytesIO()
+                result.save(buffered, format="JPEG")
+                return base64.b64encode(buffered.getvalue())
+
+    def __post_result_via_web_socket(self, input):
+        x = np.copy(input)
         x = x.reshape((self.height, self.width, 3))
         x = x[:, :, ::-1]
         x[:, :, 0] += 103.939
         x[:, :, 1] += 116.779
         x[:, :, 2] += 123.68
         x = np.clip(x, 0, 255).astype('uint8')
-
         result = Image.fromarray(x)
-
-        if self.output_path is not None:
-            imsave(self.output_path, result)
-        else:
-            buffered = BytesIO()
-            result.save(buffered, format="JPEG")
-            return base64.b64encode(buffered.getvalue())
+        buffered = BytesIO()
+        result.save(buffered, format="JPEG")
+        result =  base64.b64encode(buffered.getvalue()).decode("utf-8")
+        emit(self.web_socket_channel, result)
+        buffered.close()
 
 
 

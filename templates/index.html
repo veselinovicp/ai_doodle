@@ -117,8 +117,16 @@
     });
 
     socket.on('updateresult', function(response){
-      var s = "data:image/jpg;base64,"+response;
-      $('#result').attr('src', s);
+        // alert('got result');
+        d = new Date();
+        var s = "data:image/jpg;base64,"+response;//+"?"+d.getTime()
+        $('#result').attr('src', "http://www.fnordware.com/superpng/pnggrad16rgb.png?"+d.getTime());
+
+        // $('#result').attr('src', s);
+        setTimeout(function(){
+            $('#result').attr('src', s);
+        }, 1000);
+
     });
 
     function imageToDataURL(img){

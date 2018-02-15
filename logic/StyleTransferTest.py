@@ -11,7 +11,7 @@ class TestMethods(unittest.TestCase):
     #     # trainer.train()
 
     def test_style_transfer(self):
-        style_transfer = lg.StyleTransfer(width=200, height=200, content_image_path="../data/faca.jpg", style_image_path="../data/Satyrs_HeadBrown_InkLouvre.jpg", output_path ="../output/1.png", iterations=5)
+        style_transfer = lg.StyleTransfer(width=200, height=200, content_image_path="../data/hugo.jpg", style_image_path="../data/wave.jpg", output_path ="../output/1.png", iterations=10)
 
         style_transfer.transfer()
         # trainer.train()
