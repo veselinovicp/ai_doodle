@@ -29,105 +29,35 @@ from keras.datasets import mnist
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
-from keras.preprocessing.image import ImageDataGenerator, img_to_array
+from keras.preprocessing.image import ImageDataGenerator, img_to_array, array_to_img
 import cv2
 from skimage import feature
+from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
+
 
 class AutoEncoder:
-    def __init__(self, train_size=100, epochs=100, batch_size = 128, input_images = '../data/michelangelo'):
+    def __init__(self, train_size=100, epochs=100, batch_size=128, input_images='../data/michelangelo'):
         self.train_size = train_size
         self.train_percent = 80.
         self.epochs = epochs
         self.batch_size = batch_size
         self.input_images = input_images
         self.__load_data()
+        self.__prepare_model()
 
-    def __load_data(self):
-        print("Start loading data")
-
-        generator = ImageDataGenerator(rescale=1. / 255,
-                                       width_shift_range=0.1,
-                                       height_shift_range=0.1,
-                                       rotation_range=20,
-                                       shear_range=0.2,
-                                       zoom_range=0.2,
-                                       horizontal_flip=True)
-
-        train = generator.flow_from_directory(self.input_images,
-                                              target_size=(200, 200),
-                                              batch_size=32)#,  class_mode='input'
-
-        gray_scales = []
-        edgeses = []
-        for i in range(self.train_size):
-            print((i * 100. / self.train_size), " %")
-            img, _ = train.next()
-            gray_scale = cv2.cvtColor(img[0], cv2.COLOR_BGR2GRAY)
-            gray_scale = cv2.resize(gray_scale, (200, 200))
-
-            edges = feature.canny(gray_scale, sigma=3.)
-            # edges = cv2.resize(edges, (200, 200))
-            if i == 0:
-                print("output min", img_to_array(gray_scale).min())
-                print("output max", img_to_array(gray_scale).max())
-
-            gray_scales.append(img_to_array(gray_scale))
-            edgeses.append(img_to_array(edges))
-
-            if i == 0:
-                print("input min", img_to_array(edges).min())
-                print("output max", img_to_array(gray_scale).max())
-            # plt.imsave('../data/michelangelo/input_image'+str(i)+'.png', edges, cmap=plt.cm.gray)
-            # plt.imsave('../data/michelangelo/output_image' + str(i) + '.png', gray_scale, cmap=plt.cm.gray)
-
-        self.input_images = np.stack(edgeses)
-        print("input image shape ", self.input_images.shape)
-        self.output_images = np.stack(gray_scales)
-        print("output image shape ", self.output_images.shape)
-
-        split_num = int(self.train_percent/100. * self.train_size)
-        print("split_num: ", split_num)
-
-        self.train_input = self.input_images[:split_num,:,:,:]
-        print("train_input shape ", self.train_input.shape)
-        self.train_output = self.output_images[:split_num,:,:,:]
-        print("train_output shape ", self.train_output.shape)
-        self.test_input = self.input_images[split_num:,:,:,:]
-        print("test_input shape ", self.test_input.shape)
-        self.test_output = self.output_images[split_num:,:,:,:]
-        print("test_output shape ", self.test_output.shape)
-
-
-    def train(self):
-
+    def __prepare_model(self):
         np.random.seed(1337)
 
-        # MNIST dataset
-        # (x_train, _), (x_test, _) = mnist.load_data()
-
         x_train = self.train_output
-        x_test = self.test_output
+        self.x_test = self.test_output
 
-        image_size = x_train.shape[1]
-        # x_train = np.reshape(x_train, [-1, image_size, image_size, 1])
-        # x_test = np.reshape(x_test, [-1, image_size, image_size, 1])
-        # x_train = x_train.astype('float32') / 255
-        # x_test = x_test.astype('float32') / 255
+        self.image_size = x_train.shape[1]
 
-        # Generate corrupted MNIST images by adding noise with normal dist
-        # centered at 0.5 and std=0.5
-        # noise = np.random.normal(loc=0.5, scale=0.5, size=x_train.shape)
-        # x_train_noisy = x_train + noise
-        # noise = np.random.normal(loc=0.5, scale=0.5, size=x_test.shape)
-        # x_test_noisy = x_test + noise
-        #
-        # x_train_noisy = np.clip(x_train_noisy, 0., 1.)
-        # x_test_noisy = np.clip(x_test_noisy, 0., 1.)
         x_train_noisy = self.train_input
-        x_test_noisy = self.test_input
+        self.x_test_noisy = self.test_input
 
         # Network parameters
-        input_shape = (image_size, image_size, 1)
+        input_shape = (self.image_size, self.image_size, 1)
         batch_size = self.batch_size
         kernel_size = 3
         latent_dim = 16
@@ -182,7 +112,7 @@ class AutoEncoder:
                             kernel_size=kernel_size,
                             padding='same')(x)
 
-        outputs = Activation('sigmoid', name='decoder_output')(x)#sigmoid
+        outputs = Activation('sigmoid', name='decoder_output')(x)  # sigmoid
 
         # Instantiate Decoder Model
         decoder = Model(latent_inputs, outputs, name='decoder')
@@ -190,29 +120,106 @@ class AutoEncoder:
 
         # Autoencoder = Encoder + Decoder
         # Instantiate Autoencoder Model
-        autoencoder = Model(inputs, decoder(encoder(inputs)), name='autoencoder')
-        autoencoder.summary()
+        self.autoencoder = Model(inputs, decoder(encoder(inputs)), name='autoencoder')
+        self.autoencoder.summary()
 
-        autoencoder.compile(loss='mse', optimizer='adam')
+        self.autoencoder.compile(loss='mse', optimizer='adam')
+
+    def __load_data(self):
+        print("Start loading data")
+
+        generator = ImageDataGenerator(rescale=1. / 255,
+                                       width_shift_range=0.1,
+                                       height_shift_range=0.1,
+                                       rotation_range=20,
+                                       shear_range=0.2,
+                                       zoom_range=0.2,
+                                       horizontal_flip=True)
+
+        train = generator.flow_from_directory(self.input_images,
+                                              target_size=(200, 200),
+                                              batch_size=32)  # ,  class_mode='input'
+
+        gray_scales = []
+        edgeses = []
+        for i in range(self.train_size):
+            print((i * 100. / self.train_size), " %")
+            img, _ = train.next()
+            gray_scale = cv2.cvtColor(img[0], cv2.COLOR_BGR2GRAY)
+            gray_scale = cv2.resize(gray_scale, (200, 200))
+
+            edges = feature.canny(gray_scale, sigma=3.)
+            # edges = cv2.resize(edges, (200, 200))
+            if i == 0:
+                print("output min", img_to_array(gray_scale).min())
+                print("output max", img_to_array(gray_scale).max())
+
+            gray_scales.append(img_to_array(gray_scale))
+            edgeses.append(img_to_array(edges))
+
+            if i == 0:
+                print("input min", img_to_array(edges).min())
+                print("output max", img_to_array(gray_scale).max())
+            # plt.imsave('../data/michelangelo/input_image'+str(i)+'.png', edges, cmap=plt.cm.gray)
+            # plt.imsave('../data/michelangelo/output_image' + str(i) + '.png', gray_scale, cmap=plt.cm.gray)
+
+        self.input_images = np.stack(edgeses)
+        print("input image shape ", self.input_images.shape)
+        self.output_images = np.stack(gray_scales)
+        print("output image shape ", self.output_images.shape)
+
+        split_num = int(self.train_percent / 100. * self.train_size)
+        print("split_num: ", split_num)
+
+        self.train_input = self.input_images[:split_num, :, :, :]
+        print("train_input shape ", self.train_input.shape)
+        self.train_output = self.output_images[:split_num, :, :, :]
+        print("train_output shape ", self.train_output.shape)
+        self.test_input = self.input_images[split_num:, :, :, :]
+        print("test_input shape ", self.test_input.shape)
+        self.test_output = self.output_images[split_num:, :, :, :]
+        print("test_output shape ", self.test_output.shape)
+
+    def predict_test_value(self, weights_path, image_path="../data/input_image.png", detect_edges=False):
+
+        self.autoencoder.load_weights(weights_path)
+        input = cv2.imread(image_path)
+        input = cv2.resize(input, (200, 200))
+        gray_scale = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
+        if detect_edges:
+            gray_scale = feature.canny(gray_scale, sigma=3.)
+        array = img_to_array(gray_scale)
+        array = array.reshape((1,) + array.shape)
+        predicted_output = self.autoencoder.predict(array)
+        print("shape ", predicted_output.shape)
+        predicted_image = array_to_img(predicted_output[0])
+        plt.imsave('../data/predicted_image.png', predicted_image, cmap=plt.cm.gray)
+
+    def train(self):
+
+        model_checkpoint = ModelCheckpoint("../output/weights.hdf5", monitor='val_loss', verbose=1,
+                                           save_best_only=True, mode='min')  # weights.{epoch:02d}.hdf5
+        tensor_board = TensorBoard(log_dir='../output/', histogram_freq=0,
+                                   write_graph=True, write_images=False)  #
 
         # Train the autoencoder
-        autoencoder.fit(x_train_noisy,
-                        x_train,
-                        validation_data=(x_test_noisy, x_test),
-                        epochs=self.epochs,
-                        batch_size=batch_size)#epochs=30,
+        self.autoencoder.fit(self.train_input,
+                             self.train_output,
+                             validation_data=(self.x_test_noisy, self.x_test),
+                             epochs=self.epochs,
+                             batch_size=self.batch_size, callbacks=[model_checkpoint, tensor_board])  # epochs=30,
 
         # Predict the Autoencoder output from corrupted test images
-        x_decoded = autoencoder.predict(x_test_noisy)
+        x_decoded = self.autoencoder.predict(self.x_test_noisy)
 
         # Display the 1st 8 corrupted and denoised images
         # rows, cols = 10, 30
         rows, cols = 1, self.test_input.shape[0]
         num = rows * cols
-        imgs = np.concatenate([x_test[:num], x_test_noisy[:num], x_decoded[:num]])
-        imgs = imgs.reshape((rows * 3, cols, image_size, image_size))
+        imgs = np.concatenate([self.x_test[:num], self.x_test_noisy[:num], x_decoded[:num]])
+        imgs = imgs.reshape((rows * 3, cols, self.image_size, self.image_size))
         imgs = np.vstack(np.split(imgs, rows, axis=1))
-        imgs = imgs.reshape((rows * 3, -1, image_size, image_size))
+        imgs = imgs.reshape((rows * 3, -1, self.image_size, self.image_size))
         imgs = np.vstack([np.hstack(i) for i in imgs])
         imgs = (imgs * 255).astype(np.uint8)
         plt.figure()
