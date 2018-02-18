@@ -36,12 +36,13 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 
 
 class AutoEncoder:
-    def __init__(self, train_size=100, epochs=100, batch_size=128, input_images='../data/michelangelo'):
+    def __init__(self, train_size=100, epochs=100, batch_size=128, input_images='../data/michelangelo', dimension=200):
         self.train_size = train_size
         self.train_percent = 80.
         self.epochs = epochs
         self.batch_size = batch_size
         self.input_images = input_images
+        self.dimension = dimension
         self.__load_data()
         self.__prepare_model()
 
@@ -137,7 +138,7 @@ class AutoEncoder:
                                        horizontal_flip=True)
 
         train = generator.flow_from_directory(self.input_images,
-                                              target_size=(200, 200),
+                                              target_size=(self.dimension, self.dimension),
                                               batch_size=32)  # ,  class_mode='input'
 
         gray_scales = []
@@ -146,7 +147,7 @@ class AutoEncoder:
             print((i * 100. / self.train_size), " %")
             img, _ = train.next()
             gray_scale = cv2.cvtColor(img[0], cv2.COLOR_BGR2GRAY)
-            gray_scale = cv2.resize(gray_scale, (200, 200))
+            # gray_scale = cv2.resize(gray_scale, (self.dimension, self.dimension))
 
             edges = feature.canny(gray_scale, sigma=3.)
             # edges = cv2.resize(edges, (200, 200))
@@ -184,7 +185,7 @@ class AutoEncoder:
 
         self.autoencoder.load_weights(weights_path)
         input = cv2.imread(image_path)
-        input = cv2.resize(input, (200, 200))
+        input = cv2.resize(input, (self.image_size, self.image_size))
         gray_scale = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
         if detect_edges:
             gray_scale = feature.canny(gray_scale, sigma=3.)
