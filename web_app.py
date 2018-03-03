@@ -34,7 +34,7 @@ def stylizeEvent(json_string):
     style_transfer = lg.StyleTransfer(width=200, height=200, content_image_base64=img,
                                       style_image_base64=style, iterations=10, web_socket_channel='updateresult',
                                       max_fun=20)
-    result = style_transfer.transfer().decode("utf-8")
+    # result = style_transfer.transfer().decode("utf-8")
 
 
 # emit('updateresult', result)
