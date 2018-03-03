@@ -7,6 +7,10 @@
   margin-bottom: 1.2rem;
 }
 
+.bt {
+	font-size: 16px;
+}
+
 .image {
 	max-width:300px;
 	max-height:300px;

@@ -18,7 +18,7 @@
 <div class="section">
     <div class="container">
       <h3 class="section-heading">AI style doodle</h3>
-      <p class="section-description">Choose image and style and see what AI doodling will make of it.</p>
+      <p class="section-description bt">Choose image and style and see what AI doodling will make of it.</p>
 
       <div class="row dr">
 
@@ -58,13 +58,12 @@
     </div>
 
 
-    <div class="row dr">
-      <div class="twelve columns">
-         <img id="result" src="{{ url_for('static',filename='2.png') }}" class="u-max-full-width image"/>
-      </div>
-    </div>
     <div class="row">
-      <a id="stylize" class="button">Stylize!</a>
+      <br><br>
+      <form id="mailForm">
+        <input type="email" id="mailAddress" value="john@example.com">
+        <input id="sendToMailButton" class="button" type="submit" value="Send to mail">
+      </form>      
     </div>
 
   </div>
@@ -81,6 +80,11 @@
 
     var socket = io.connect('http://' + document.domain + ':' + location.port);
     var $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+
+    $("#mailAddress").click(function(){
+      if(this.value == "john@example.com")
+        this.value = "";
+    });
 
     $("#randomimage").click(function() {
       $.ajax({
@@ -102,18 +106,19 @@
       });
     });
 
-    $("#stylize").click(function(){
-
+    $("#sendToMailButton").click(function(){
       var img = document.getElementById("image");
       var imgdata = imageToDataURL(img);
       var style = document.getElementById("style");
       var styledata = imageToDataURL(style);
+      var mailAddress = document.getElementById("mailAddress").value;
 
-      var json_data=JSON.stringify({'img': imgdata, 'style': styledata})
+      var json_data=JSON.stringify({'img': imgdata, 'style': styledata, 'mail': mailAddress})
 
-      socket.emit('stylize', { 
+      socket.emit('sendToMail', { 
         content: json_data, importance: '1' 
       });
+      return false; // prevent reload
     });
 
     socket.on('updateresult', function(response){
@@ -127,6 +132,10 @@
             $('#result').attr('src', s);
         }, 1000);
 
+    });
+
+    socket.on('willSendMail', function(response){
+      $("#mailForm").html("<p class='bt'>Got it! Will send results to <i>" + response + "</i> (may take some time).</p>");
     });
 
     function imageToDataURL(img){

@@ -16,6 +16,8 @@ socketio = SocketIO(app, ping_timeout=1200)
 IMAGELIST = ["2.png", "faca.jpg", "van_gough.jpg"]
 STYLELIST = ["2.png", "faca.jpg", "van_gough.jpg"]
 
+# regex
+VALIDMAIL = re.compile(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
 # main page
 @app.route('/')
@@ -23,16 +25,23 @@ def index():
     return render_template('index.html')
 
 
-# user clicked stylize
-@socketio.on('stylize')
+# user clicked sendToMail button
+@socketio.on('sendToMail')
 def stylizeEvent(json_string):
     data = json.loads(json_string['content'])
 
     img = re.search(r'base64,(.*)', data['img']).group(1)
     style = re.search(r'base64,(.*)', data['style']).group(1)
 
+    # check validity of email address (basic)
+    if not VALIDMAIL.match(data['mail']):
+        print("Invalid mail address")
+        return
+    else:
+        emit('willSendMail', data['mail'])
+
     style_transfer = lg.StyleTransfer(width=200, height=200, content_image_base64=img,
-                                      style_image_base64=style, iterations=10, web_socket_channel='updateresult',
+                                      style_image_base64=style, iterations=1, web_socket_channel='updateresult',
                                       max_fun=20)
     # result = style_transfer.transfer().decode("utf-8")
 
