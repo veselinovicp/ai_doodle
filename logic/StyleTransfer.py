@@ -200,7 +200,8 @@ class StyleTransfer:
             else:
                 buffered = BytesIO()
                 result.save(buffered, format="JPEG")
-                return base64.b64encode(buffered.getvalue())
+                # return base64.b64encode(buffered.getvalue())
+                return buffered.getvalue()
 
     def __post_result_via_web_socket(self, input):
         x = np.copy(input)
