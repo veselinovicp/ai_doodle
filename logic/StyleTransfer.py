@@ -37,6 +37,19 @@ class StyleTransfer:
         self.web_socket_channel = web_socket_channel
         self.max_fun = max_fun
 
+    def __get_resize_dimensions(self, content_image):
+        width, height = content_image.size
+        if width < self.width and height < self.height:
+            return width, height
+
+        factor = 0.
+        if width > height:
+            factor = self.width/width
+        else:
+            factor = self.height/height
+
+        return int(round(factor*width)), int(round(factor*height))
+
 
     def transfer(self):
 
@@ -46,14 +59,17 @@ class StyleTransfer:
             content_image = Image.open(self.content_image_path)
         else:
             content_image = Image.open(BytesIO(base64.b64decode(self.content_image_base64)))
-        content_image = content_image.resize((self.height, self.width))
+
+        width, height = self.__get_resize_dimensions(content_image)
+        content_image = content_image.resize((width, height))
 
         # style_image_path = '../data/wave.jpg'
         if self.style_image_base64 is None:
             style_image = Image.open(self.style_image_path)
         else:
             style_image = Image.open(BytesIO(base64.b64decode(self.style_image_base64)))
-        style_image = style_image.resize((self.height, self.width))
+
+        style_image = style_image.resize((width, height))
 
         content_array = np.asarray(content_image, dtype='float32')
         content_array = np.expand_dims(content_array, axis=0)
@@ -63,7 +79,8 @@ class StyleTransfer:
         style_array = np.expand_dims(style_array, axis=0)
         print(style_array.shape)
 
-        dimensions = (1, self.height, self.width, 3)
+        # dimensions = (1, self.height, self.width, 3)
+        dimensions = (1, height, width, 3)
 
         content_array[:, :, :, 0] -= 103.939
         content_array[:, :, :, 1] -= 116.779
@@ -115,7 +132,7 @@ class StyleTransfer:
             S = gram_matrix(style)
             C = gram_matrix(combination)
             channels = 3
-            size = self.height * self.width
+            size = height * width
             return backend.sum(backend.square(S - C)) / (4. * (channels ** 2) * (size ** 2))
 
         feature_layers = ['block1_conv2', 'block2_conv2',
@@ -129,8 +146,8 @@ class StyleTransfer:
             loss += (self.style_weight / len(feature_layers)) * sl
 
         def total_variation_loss(x):
-            a = backend.square(x[:, :self.height - 1, :self.width - 1, :] - x[:, 1:, :self.width - 1, :])
-            b = backend.square(x[:, :self.height - 1, :self.width - 1, :] - x[:, :self.height - 1, 1:, :])
+            a = backend.square(x[:, :height - 1, :self.width - 1, :] - x[:, 1:, :width - 1, :])
+            b = backend.square(x[:, :height - 1, :self.width - 1, :] - x[:, :height - 1, 1:, :])
             return backend.sum(backend.pow(a + b, 1.25))
 
         loss += self.total_variation_weight * total_variation_loss(combination_image)
@@ -183,10 +200,10 @@ class StyleTransfer:
             end_time = time.time()
             print('Iteration %d completed in %ds' % (i, end_time - start_time))
             if self.web_socket_channel is not None:
-                self.__post_result_via_web_socket(x)
+                self.__post_result_via_web_socket(x, height, width)
 
         if self.web_socket_channel is None:
-            x = x.reshape((self.height, self.width, 3))
+            x = x.reshape((height, width, 3))
             x = x[:, :, ::-1]
             x[:, :, 0] += 103.939
             x[:, :, 1] += 116.779
@@ -203,9 +220,9 @@ class StyleTransfer:
                 # return base64.b64encode(buffered.getvalue())
                 return buffered.getvalue()
 
-    def __post_result_via_web_socket(self, input):
+    def __post_result_via_web_socket(self, input, height, width):
         x = np.copy(input)
-        x = x.reshape((self.height, self.width, 3))
+        x = x.reshape((height, width, 3))
         x = x[:, :, ::-1]
         x[:, :, 0] += 103.939
         x[:, :, 1] += 116.779
