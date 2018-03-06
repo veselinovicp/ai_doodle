@@ -59,7 +59,7 @@ def stylizeEvent(json_string):
         msg = Message('AI Doodle Result', sender = config.get('DEFAULT', 'MAIL_USERNAME'), recipients = [data['mail']])
         msg.body = "We are sending you your stylized image."
 
-        style_transfer = lg.StyleTransfer(width=200, height=200, content_image_base64=img,
+        style_transfer = lg.StyleTransfer(width=500, height=500, content_image_base64=img,
                                           style_image_base64=style, iterations=10, max_fun=20)
         result = style_transfer.transfer()#.decode("utf-8")
         msg.attach("result.jpg", 'image/jpg', result)#'application/octect-stream' "image/jpg"
