@@ -9,7 +9,7 @@ from keras.models import Model
 from keras.applications.vgg16 import VGG16
 from scipy.optimize import fmin_l_bfgs_b
 from scipy.misc import imsave
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
 from flask_socketio import emit

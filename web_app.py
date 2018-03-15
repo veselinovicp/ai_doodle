@@ -10,6 +10,7 @@ import configparser
 
 # initialize flask app
 app = Flask(__name__)
+application = app # our hosting requires application in passenger_wsgi
 app.config['SECRET_KEY'] = 'secret!'
 
 mail=Mail(app)
@@ -28,7 +29,7 @@ mail = Mail(app)
 
 
 # ping_timeout should be high enough
-socketio = SocketIO(app, ping_timeout=1200)
+socketio = SocketIO(app, ping_timeout=1200, ssl_context='adhoc')
 
 IMAGELIST = ["2.png", "faca.jpg", "van_gough.jpg"]
 STYLELIST = ["2.png", "faca.jpg", "van_gough.jpg"]
