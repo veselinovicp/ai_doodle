@@ -7,17 +7,40 @@ from flask_socketio import SocketIO, emit
 import json
 from flask_mail import Mail, Message
 import configparser
+from celery import Celery
+
+
+def make_celery(app):
+    celery = Celery(app.import_name, backend=app.config['CELERY_RESULT_BACKEND'],
+                    broker=app.config['CELERY_BROKER_URL'])
+    celery.conf.update(app.config)
+    TaskBase = celery.Task
+
+    class ContextTask(TaskBase):
+        abstract = True
+
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return TaskBase.__call__(self, *args, **kwargs)
+
+    celery.Task = ContextTask
+    return celery
+
 
 # initialize flask app
 app = Flask(__name__)
-application = app # our hosting requires application in passenger_wsgi
+application = app  # our hosting requires application in passenger_wsgi
 app.config['SECRET_KEY'] = 'secret!'
+app.config.update(
+    CELERY_BROKER_URL='redis://localhost:6379',
+    CELERY_RESULT_BACKEND='redis://localhost:6379'
+)
+celery = make_celery(app)
 
-mail=Mail(app)
+mail = Mail(app)
 
 config = configparser.RawConfigParser()
 config.read('secret.properties')
-
 
 app.config['MAIL_SERVER'] = config.get('DEFAULT', 'MAIL_SERVER')
 app.config['MAIL_PORT'] = 465
@@ -27,7 +50,6 @@ app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
 mail = Mail(app)
 
-
 # ping_timeout should be high enough
 socketio = SocketIO(app, ping_timeout=1200, ssl_context='adhoc')
 
@@ -35,7 +57,9 @@ IMAGELIST = ["2.png", "faca.jpg", "van_gough.jpg"]
 STYLELIST = ["2.png", "faca.jpg", "van_gough.jpg"]
 
 # regex
-VALIDMAIL = re.compile(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+VALIDMAIL = re.compile(
+    r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
 
 # main page
 @app.route('/')
@@ -57,20 +81,32 @@ def stylizeEvent(json_string):
         return
     else:
         emit('willSendMail', data['mail'])
-        msg = Message('AI Doodle Result', sender = config.get('DEFAULT', 'MAIL_USERNAME'), recipients = [data['mail']])
-        msg.body = "We are sending you your stylized image."
-
-        style_transfer = lg.StyleTransfer(width=500, height=500, content_image_base64=img,
-                                          style_image_base64=style, iterations=10, max_fun=20)
-        result = style_transfer.transfer()#.decode("utf-8")
-        msg.attach("result.jpg", 'image/jpg', result)#'application/octect-stream' "image/jpg"
-        mail.send(msg)
-
+        do_the_work.delay(data, img, style)
+        # msg = Message('AI Doodle Result', sender=config.get('DEFAULT', 'MAIL_USERNAME'), recipients=[data['mail']])
+        # msg.body = "We are sending you your stylized image."
+        #
+        # style_transfer = lg.StyleTransfer(width=500, height=500, content_image_base64=img,
+        #                                   style_image_base64=style, iterations=10, max_fun=20)
+        # result = style_transfer.transfer()  # .decode("utf-8")
+        # msg.attach("result.jpg", 'image/jpg', result)  # 'application/octect-stream' "image/jpg"
+        # mail.send(msg)
 
     style_transfer = lg.StyleTransfer(width=200, height=200, content_image_base64=img,
                                       style_image_base64=style, iterations=1, web_socket_channel='updateresult',
                                       max_fun=20)
     # result = style_transfer.transfer().decode("utf-8")
+
+@celery.task()
+def do_the_work(data, img, style):
+    print('Start to do the work')
+    msg = Message('AI Doodle Result', sender=config.get('DEFAULT', 'MAIL_USERNAME'), recipients=[data['mail']])
+    msg.body = "We are sending you your stylized image."
+
+    style_transfer = lg.StyleTransfer(width=500, height=500, content_image_base64=img,
+                                      style_image_base64=style, iterations=10, max_fun=20)
+    result = style_transfer.transfer()  # .decode("utf-8")
+    msg.attach("result.jpg", 'image/jpg', result)  # 'application/octect-stream' "image/jpg"
+    mail.send(msg)
 
 
 # emit('updateresult', result)

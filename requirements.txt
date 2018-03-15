@@ -11,3 +11,5 @@ Flask-Mail==0.9.1
 h5py==2.7.0
 eventlet==0.22.1
 gevent==1.2.2
+celery==4.1.0
+redis==2.10.6
