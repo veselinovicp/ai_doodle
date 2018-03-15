@@ -7,35 +7,22 @@ from flask_socketio import SocketIO, emit
 import json
 from flask_mail import Mail, Message
 import configparser
-from celery import Celery
+from google.cloud import pubsub_v1
+import psq
 
+google_cloud_project = 'aidoodle-art'
 
-def make_celery(app):
-    celery = Celery(app.import_name, backend=app.config['CELERY_RESULT_BACKEND'],
-                    broker=app.config['CELERY_BROKER_URL'])
-    celery.conf.update(app.config)
-    TaskBase = celery.Task
+publisher = pubsub_v1.PublisherClient()
+subscriber = pubsub_v1.SubscriberClient()
 
-    class ContextTask(TaskBase):
-        abstract = True
-
-        def __call__(self, *args, **kwargs):
-            with app.app_context():
-                return TaskBase.__call__(self, *args, **kwargs)
-
-    celery.Task = ContextTask
-    return celery
+q = psq.Queue(publisher, subscriber, google_cloud_project)
 
 
 # initialize flask app
 app = Flask(__name__)
 application = app  # our hosting requires application in passenger_wsgi
 app.config['SECRET_KEY'] = 'secret!'
-app.config.update(
-    CELERY_BROKER_URL='redis://localhost:6379',
-    CELERY_RESULT_BACKEND='redis://localhost:6379'
-)
-celery = make_celery(app)
+
 
 mail = Mail(app)
 
@@ -70,6 +57,7 @@ def index():
 # user clicked sendToMail button
 @socketio.on('sendToMail')
 def stylizeEvent(json_string):
+    print("Start sending to mail")
     data = json.loads(json_string['content'])
 
     img = re.search(r'base64,(.*)', data['img']).group(1)
@@ -81,7 +69,7 @@ def stylizeEvent(json_string):
         return
     else:
         emit('willSendMail', data['mail'])
-        do_the_work.delay(data, img, style)
+        q.enqueue(do_the_work, data, img, style)
         # msg = Message('AI Doodle Result', sender=config.get('DEFAULT', 'MAIL_USERNAME'), recipients=[data['mail']])
         # msg.body = "We are sending you your stylized image."
         #
@@ -96,7 +84,7 @@ def stylizeEvent(json_string):
                                       max_fun=20)
     # result = style_transfer.transfer().decode("utf-8")
 
-@celery.task()
+
 def do_the_work(data, img, style):
     print('Start to do the work')
     msg = Message('AI Doodle Result', sender=config.get('DEFAULT', 'MAIL_USERNAME'), recipients=[data['mail']])

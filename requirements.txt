@@ -13,3 +13,5 @@ eventlet==0.22.1
 gevent==1.2.2
 celery==4.1.0
 redis==2.10.6
+psq==0.6.0
+google-cloud==0.32.0
