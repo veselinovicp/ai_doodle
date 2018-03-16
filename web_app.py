@@ -9,13 +9,17 @@ from flask_mail import Mail, Message
 import configparser
 from google.cloud import pubsub_v1
 import psq
+# from queue import do_the_work
+from logic.StyleTransfer import do_the_work
+
 
 google_cloud_project = 'aidoodle-art'
 
 publisher = pubsub_v1.PublisherClient()
 subscriber = pubsub_v1.SubscriberClient()
 
-q = psq.Queue(publisher, subscriber, google_cloud_project)
+q = psq.Queue(publisher, subscriber, google_cloud_project, async=True)
+
 
 
 # initialize flask app
@@ -69,7 +73,7 @@ def stylizeEvent(json_string):
         return
     else:
         emit('willSendMail', data['mail'])
-        q.enqueue(do_the_work, data, img, style)
+        q.enqueue(do_the_work, mail, data, img, style, config)
         # msg = Message('AI Doodle Result', sender=config.get('DEFAULT', 'MAIL_USERNAME'), recipients=[data['mail']])
         # msg.body = "We are sending you your stylized image."
         #
@@ -85,16 +89,16 @@ def stylizeEvent(json_string):
     # result = style_transfer.transfer().decode("utf-8")
 
 
-def do_the_work(data, img, style):
-    print('Start to do the work')
-    msg = Message('AI Doodle Result', sender=config.get('DEFAULT', 'MAIL_USERNAME'), recipients=[data['mail']])
-    msg.body = "We are sending you your stylized image."
-
-    style_transfer = lg.StyleTransfer(width=500, height=500, content_image_base64=img,
-                                      style_image_base64=style, iterations=10, max_fun=20)
-    result = style_transfer.transfer()  # .decode("utf-8")
-    msg.attach("result.jpg", 'image/jpg', result)  # 'application/octect-stream' "image/jpg"
-    mail.send(msg)
+# def do_the_work(data, img, style):
+#     print('Start to do the work')
+#     msg = Message('AI Doodle Result', sender=config.get('DEFAULT', 'MAIL_USERNAME'), recipients=[data['mail']])
+#     msg.body = "We are sending you your stylized image."
+#
+#     style_transfer = lg.StyleTransfer(width=500, height=500, content_image_base64=img,
+#                                       style_image_base64=style, iterations=10, max_fun=20)
+#     result = style_transfer.transfer()  # .decode("utf-8")
+#     msg.attach("result.jpg", 'image/jpg', result)  # 'application/octect-stream' "image/jpg"
+#     mail.send(msg)
 
 
 # emit('updateresult', result)

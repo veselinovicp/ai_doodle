@@ -15,6 +15,20 @@ import base64
 from flask_socketio import emit
 
 
+from flask_mail import Message
+
+
+def do_the_work(data, mail, img, style, config):
+    print('Start to do the work')
+    msg = Message('AI Doodle Result', sender=config.get('DEFAULT', 'MAIL_USERNAME'), recipients=[data['mail']])
+    msg.body = "We are sending you your stylized image."
+
+    style_transfer = lg.StyleTransfer(width=500, height=500, content_image_base64=img,
+                                      style_image_base64=style, iterations=10, max_fun=20)
+    result = style_transfer.transfer()  # .decode("utf-8")
+    msg.attach("result.jpg", 'image/jpg', result)  # 'application/octect-stream' "image/jpg"
+    mail.send(msg)
+
 class StyleTransfer:
 
     def __init__(self, width=512, height=512, content_image_path = '../data/hugo.jpg', style_image_path = '../data/wave.jpg',
