@@ -1,0 +1,4 @@
+queue:
+- name: stylize
+  target: v1.stylize-modul
+  rate: 10/s

@@ -72,13 +72,7 @@
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
 
   <script type="text/javascript">
-    // bug fix for older browsers
-    $(window).on('beforeunload', function(){
-      socket.close();
-    });
 
-
-    var socket = io.connect('https://' + document.domain + ':' + location.port);
     var $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
 
     $("#mailAddress").click(function(){
@@ -108,20 +102,41 @@
 
     $("#sendToMailButton").click(function(){
       var img = document.getElementById("image");
-      var imgdata = imageToDataURL(img);
-      var style = document.getElementById("style");
-      var styledata = imageToDataURL(style);
-      var mailAddress = document.getElementById("mailAddress").value;
+        var imgdata = imageToDataURL(img);
+        var style = document.getElementById("style");
+        var styledata = imageToDataURL(style);
+        var mailAddress = document.getElementById("mailAddress").value;
 
-      var json_data=JSON.stringify({'img': imgdata, 'style': styledata, 'mail': mailAddress})
+        var formData = new FormData();
+        formData.append('img', imgdata);
+        formData.append('style', styledata);
+        formData.append('mail', mailAddress);
 
-      socket.emit('sendToMail', { 
-        content: json_data, importance: '1' 
-      });
+        $.ajax({
+            type: "POST",
+            data: formData,
+            url: $SCRIPT_ROOT + "/sendToMail/",
+            contentType: false,
+            processData: false,
+            success: function (response) {
+                alert("upploaded");
+                /*var s = "data:image/jpg;base64," + response;
+                $('#result').attr('src', s);*/
+            }
+        });
+
+
+     /* var json_data=JSON.stringify({'img': imgdata, 'style': styledata, 'mail': mailAddress})
+
+      socket.emit('sendToMail', {
+        content: json_data, importance: '1'
+      });*/
       return false; // prevent reload
     });
 
-    socket.on('updateresult', function(response){
+
+
+    /*socket.on('updateresult', function(response){
         // alert('got result');
         d = new Date();
         var s = "data:image/jpg;base64,"+response;//+"?"+d.getTime()
@@ -137,7 +152,7 @@
     socket.on('willSendMail', function(response){
       $("#mailForm").html("<p class='bt'>Got it! Will send results to <i>" + response + "</i> (may take some time).</p>");
     });
-
+*/
     function imageToDataURL(img){
       var canvas, ctx, dataURL;
         canvas = document.createElement("canvas");
