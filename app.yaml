@@ -23,3 +23,8 @@ skip_files:
 - data/
 - ai_doodle/
 - idea_py_env/
+
+handlers:
+- url: /stylize
+  script: worker.app
+  login: admin

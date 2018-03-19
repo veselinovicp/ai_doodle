@@ -1,0 +1,8 @@
+api_version: 1
+threadsafe: true
+service: worker
+
+handlers:
+- url: /.*
+  script: worker.app
+  login: admin
